@@ -12,6 +12,8 @@ RUN npm install
 
 RUN npm install typescript -g
 
+RUN npx prisma migrate dev --name init      
+
 # Copy the application code
 COPY . .
 

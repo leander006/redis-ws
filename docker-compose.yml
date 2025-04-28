@@ -1,0 +1,44 @@
+version: "3.9"
+services:
+
+  postgres:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+
+  kafka:
+    image: apache/kafka:3.7.1
+    restart: always
+    ports:
+      - "9092:9092"
+
+  websocket-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - DATABASE_URL=postgresql://postgres:mysecretpassword@localhost:5432/postgres
+      - KAFKA_BROKER=kafka:9092

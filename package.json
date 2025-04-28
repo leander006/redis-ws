@@ -11,12 +11,15 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/client": "^6.6.0",
     "dotenv": "^16.5.0",
+    "kafkajs": "^2.2.4",
     "redis": "^4.7.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {
     "@types/redis": "^4.0.10",
-    "@types/ws": "^8.18.1"
+    "@types/ws": "^8.18.1",
+    "prisma": "^6.6.0"
   }
 }

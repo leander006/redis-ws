@@ -1,6 +1,7 @@
 import { WebSocketServer,WebSocket } from 'ws';
 import { createClient } from 'redis';
 import { PORT ,REDIS_USERNAME,REDIS_PASSWORD,REDIS_PORT,REDIS_HOST} from './config';
+import { produceMessage } from './kafka';
 
 const publishClient = createClient({
     username: REDIS_USERNAME,
@@ -49,13 +50,14 @@ wss.on('connection', function connection(ws) {
         subscriptions[id].rooms.push(roomId)
         if (oneUserSubscribedTo(roomId)) {
             console.log("subscribing on the pub sub to room " + roomId);
-            subscribeClient.subscribe(roomId, (messages) => {
+            subscribeClient.subscribe(roomId, async (messages) => {
                 for(const key in subscriptions){
                     const {ws,rooms} = subscriptions[key]
                     const { message ,senderId } = JSON.parse(messages)
                     if ((rooms.includes(roomId)) && (key !== senderId.toString())) {
                         ws.send(JSON.stringify({ type: 'message', roomId, message }))
-                    }
+                        await produceMessage(message);
+                        console.log("Message Produced to Kafka Broker");                    }
                 }
             })
         }
