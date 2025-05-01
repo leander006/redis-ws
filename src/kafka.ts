@@ -1,9 +1,9 @@
 import { Kafka, Producer } from "kafkajs";
-import prismaClient from "./prisma";
+import {  KAFKA_BROKER} from './config';
 
 const kafka = new Kafka({
   clientId: "kafka-client",
-  brokers: ["localhost:9092"],
+  brokers: [KAFKA_BROKER || "localhost:9094"],
 });
 
 let producer: null | Producer = null;
@@ -38,11 +38,7 @@ export async function startMessageConsumer() {
       if (!message.value) return;
       console.log(`New Message Recv..`);
       try {
-        await prismaClient.message.create({
-          data: {
-            text: message.value?.toString(),
-          },
-        });
+       console.log(`Message: ${message.value.toString()}`);
       } catch (err) {
         console.log("Something is wrong");
         pause();

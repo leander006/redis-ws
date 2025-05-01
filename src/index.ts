@@ -1,25 +1,21 @@
 import { WebSocketServer,WebSocket } from 'ws';
 import { createClient } from 'redis';
-import { PORT ,REDIS_USERNAME,REDIS_PASSWORD,REDIS_PORT,REDIS_HOST} from './config';
+import { PORT,REDIS_PORT,REDIS_HOST} from './config';
 import { produceMessage } from './kafka';
 
 const publishClient = createClient({
-    username: REDIS_USERNAME,
-    password: REDIS_PASSWORD,
     socket: {
-        host: REDIS_HOST,
-        port: REDIS_PORT ? Number(REDIS_PORT) : undefined
-    }
+        host: REDIS_HOST || 'redis', 
+        port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+    },
 });
 
 publishClient.connect()
 const subscribeClient = createClient({
-    username: REDIS_USERNAME,
-    password: REDIS_PASSWORD,
-    socket: {
-        host: REDIS_HOST,
-        port: REDIS_PORT ? Number(REDIS_PORT) : undefined
-    }
+        socket: {
+        host: REDIS_HOST || 'redis', 
+        port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+    },
 });
 
 subscribeClient.connect()
@@ -56,8 +52,11 @@ wss.on('connection', function connection(ws) {
                     const { message ,senderId } = JSON.parse(messages)
                     if ((rooms.includes(roomId)) && (key !== senderId.toString())) {
                         ws.send(JSON.stringify({ type: 'message', roomId, message }))
-                        await produceMessage(message);
-                        console.log("Message Produced to Kafka Broker");                    }
+                        if(message){
+                            await produceMessage(message);
+                            console.log("Message Produced to Kafka Broker");
+                        }                   
+                    }
                 }
             })
         }

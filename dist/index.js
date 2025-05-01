@@ -1,24 +1,30 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const ws_1 = require("ws");
 const redis_1 = require("redis");
 const config_1 = require("./config");
+const kafka_1 = require("./kafka");
 const publishClient = (0, redis_1.createClient)({
-    username: config_1.REDIS_USERNAME,
-    password: config_1.REDIS_PASSWORD,
-    socket: {
-        host: config_1.REDIS_HOST,
-        port: config_1.REDIS_PORT ? Number(config_1.REDIS_PORT) : undefined
-    }
+// socket: {
+//     host: REDIS_HOST || 'redis', 
+//     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+// },
 });
 publishClient.connect();
 const subscribeClient = (0, redis_1.createClient)({
-    username: config_1.REDIS_USERNAME,
-    password: config_1.REDIS_PASSWORD,
-    socket: {
-        host: config_1.REDIS_HOST,
-        port: config_1.REDIS_PORT ? Number(config_1.REDIS_PORT) : undefined
-    }
+//     socket: {
+//     host: REDIS_HOST || 'redis', 
+//     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+// },
 });
 subscribeClient.connect();
 const wss = new ws_1.WebSocketServer({ port: Number(config_1.PORT) });
@@ -38,15 +44,19 @@ wss.on('connection', function connection(ws) {
             subscriptions[id].rooms.push(roomId);
             if (oneUserSubscribedTo(roomId)) {
                 console.log("subscribing on the pub sub to room " + roomId);
-                subscribeClient.subscribe(roomId, (messages) => {
+                subscribeClient.subscribe(roomId, (messages) => __awaiter(this, void 0, void 0, function* () {
                     for (const key in subscriptions) {
                         const { ws, rooms } = subscriptions[key];
                         const { message, senderId } = JSON.parse(messages);
                         if ((rooms.includes(roomId)) && (key !== senderId.toString())) {
                             ws.send(JSON.stringify({ type: 'message', roomId, message }));
+                            if (message) {
+                                yield (0, kafka_1.produceMessage)(message);
+                                console.log("Message Produced to Kafka Broker");
+                            }
                         }
                     }
-                });
+                }));
             }
         }
         if (type === 'unsubscribe') {
