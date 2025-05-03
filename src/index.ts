@@ -1,7 +1,7 @@
 import { WebSocketServer,WebSocket } from 'ws';
 import { createClient } from 'redis';
 import { PORT,REDIS_PORT,REDIS_HOST} from './config';
-import { produceMessage } from './kafka';
+import { printDb, produceMessage, startMessageConsumer } from './kafka';
 
 const publishClient = createClient({
     socket: {
@@ -49,11 +49,11 @@ wss.on('connection', function connection(ws) {
             subscribeClient.subscribe(roomId, async (messages) => {
                 for(const key in subscriptions){
                     const {ws,rooms} = subscriptions[key]
-                    const { message ,senderId } = JSON.parse(messages)
+                    const { message ,senderId ,roomId} = JSON.parse(messages)
                     if ((rooms.includes(roomId)) && (key !== senderId.toString())) {
                         ws.send(JSON.stringify({ type: 'message', roomId, message }))
                         if(message){
-                            await produceMessage(message);
+                            await produceMessage(message ,senderId ,roomId);
                             console.log("Message Produced to Kafka Broker");
                         }                   
                     }
@@ -111,3 +111,10 @@ function lastPersonLeftRoom(roomId: string) {
 const random = () => {
     return Math.floor(Math.random() * 1000000);
 }
+
+startMessageConsumer();
+
+setInterval(() => {
+    console.log(" Printing DB values...");
+    printDb();
+}, 120 * 1000);

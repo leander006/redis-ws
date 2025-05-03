@@ -2,6 +2,7 @@ version: "3.9"
 services:
   redis:
     image: redis
+    container_name: redis
     restart: always
     ports:
       - "6379:6379"
@@ -30,15 +31,37 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+
+  postgres:
+    image: postgres
+    container_name: postgres_db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
+    volumes:
+      - local_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
   websocket-server:
     image: leander006/websocket-server:latest
+    container_name: server
     ports:
       - "8080:8080"
     depends_on:
       - redis
       - kafka
-    environment:
+      - postgres
+    environment: 
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PORT=8080
-      - KAFKA_BROKER=kafka:9092
+      - KAFKA_BROKER=broker:9092
+      - DATABASE_URL=postgresql://postgres:mysecretpassword@postgres:5432/postgres
+
+volumes:
+  local_pgdata:

@@ -14,17 +14,17 @@ const redis_1 = require("redis");
 const config_1 = require("./config");
 const kafka_1 = require("./kafka");
 const publishClient = (0, redis_1.createClient)({
-// socket: {
-//     host: REDIS_HOST || 'redis', 
-//     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
-// },
+    socket: {
+        host: config_1.REDIS_HOST || 'redis',
+        port: config_1.REDIS_PORT ? parseInt(config_1.REDIS_PORT, 10) : 6379,
+    },
 });
 publishClient.connect();
 const subscribeClient = (0, redis_1.createClient)({
-//     socket: {
-//     host: REDIS_HOST || 'redis', 
-//     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
-// },
+    socket: {
+        host: config_1.REDIS_HOST || 'redis',
+        port: config_1.REDIS_PORT ? parseInt(config_1.REDIS_PORT, 10) : 6379,
+    },
 });
 subscribeClient.connect();
 const wss = new ws_1.WebSocketServer({ port: Number(config_1.PORT) });
@@ -59,6 +59,7 @@ wss.on('connection', function connection(ws) {
                 }));
             }
         }
+        kjlwjdwlkj;
         if (type === 'unsubscribe') {
             subscriptions[id].rooms = subscriptions[id].rooms.filter((room) => room !== roomId);
             if (lastPersonLeftRoom(roomId)) {

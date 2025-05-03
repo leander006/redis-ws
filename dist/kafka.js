@@ -8,12 +8,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createProducer = createProducer;
 exports.produceMessage = produceMessage;
 exports.startMessageConsumer = startMessageConsumer;
 const kafkajs_1 = require("kafkajs");
 const config_1 = require("./config");
+const prisma_1 = __importDefault(require("./prisma"));
 const kafka = new kafkajs_1.Kafka({
     clientId: "kafka-client",
     brokers: [config_1.KAFKA_BROKER || "localhost:9094"],
@@ -48,11 +52,16 @@ function startMessageConsumer() {
         yield consumer.run({
             autoCommit: true,
             eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ message, pause }) {
+                var _b;
                 if (!message.value)
                     return;
                 console.log(`New Message Recv..`);
                 try {
-                    console.log(`Message: ${message.value.toString()}`);
+                    yield prisma_1.default.message.create({
+                        data: {
+                            text: (_b = message.value) === null || _b === void 0 ? void 0 : _b.toString(),
+                        },
+                    });
                 }
                 catch (err) {
                     console.log("Something is wrong");
