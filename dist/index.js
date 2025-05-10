@@ -8,23 +8,63 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const ws_1 = require("ws");
 const redis_1 = require("redis");
 const config_1 = require("./config");
 const kafka_1 = require("./kafka");
+const express_1 = __importDefault(require("express"));
+const prisma_1 = __importDefault(require("./prisma"));
+const app = (0, express_1.default)();
+app.use(express_1.default.json());
+app.post('/api/auth/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, password } = req.body;
+    const user = yield prisma_1.default.user.findUnique({
+        where: { name: username, password: password },
+    });
+    if (!user) {
+        res.status(401).json({ error: 'Invalid credentials' });
+    }
+    res.json(user);
+}));
+app.get('/api/rooms/:roomId/messages', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { roomId } = req.params;
+    const messages = yield prisma_1.default.message.findMany({
+        where: {
+            roomId: roomId,
+        },
+        include: {
+            user: true,
+        },
+    });
+    res.json(messages);
+}));
+app.get('/api/rooms', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const rooms = yield prisma_1.default.room.findMany({
+        include: {
+            users: true,
+        },
+    });
+    res.json(rooms);
+}));
+app.listen(config_1.RESTPORT, () => {
+    console.log(`Server is running on http://localhost:${config_1.RESTPORT}`);
+});
 const publishClient = (0, redis_1.createClient)({
-    socket: {
-        host: config_1.REDIS_HOST || 'redis',
-        port: config_1.REDIS_PORT ? parseInt(config_1.REDIS_PORT, 10) : 6379,
-    },
+// socket: {
+//     host: REDIS_HOST || 'redis', 
+//     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+// },
 });
 publishClient.connect();
 const subscribeClient = (0, redis_1.createClient)({
-    socket: {
-        host: config_1.REDIS_HOST || 'redis',
-        port: config_1.REDIS_PORT ? parseInt(config_1.REDIS_PORT, 10) : 6379,
-    },
+//     socket: {
+//     host: REDIS_HOST || 'redis', 
+//     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+// },
 });
 subscribeClient.connect();
 const wss = new ws_1.WebSocketServer({ port: Number(config_1.PORT) });
@@ -47,11 +87,11 @@ wss.on('connection', function connection(ws) {
                 subscribeClient.subscribe(roomId, (messages) => __awaiter(this, void 0, void 0, function* () {
                     for (const key in subscriptions) {
                         const { ws, rooms } = subscriptions[key];
-                        const { message, senderId } = JSON.parse(messages);
+                        const { message, senderId, roomId } = JSON.parse(messages);
                         if ((rooms.includes(roomId)) && (key !== senderId.toString())) {
                             ws.send(JSON.stringify({ type: 'message', roomId, message }));
                             if (message) {
-                                yield (0, kafka_1.produceMessage)(message);
+                                yield (0, kafka_1.produceMessage)(message, senderId, roomId);
                                 console.log("Message Produced to Kafka Broker");
                             }
                         }
@@ -59,7 +99,6 @@ wss.on('connection', function connection(ws) {
                 }));
             }
         }
-        kjlwjdwlkj;
         if (type === 'unsubscribe') {
             subscriptions[id].rooms = subscriptions[id].rooms.filter((room) => room !== roomId);
             if (lastPersonLeftRoom(roomId)) {
@@ -106,3 +145,8 @@ function lastPersonLeftRoom(roomId) {
 const random = () => {
     return Math.floor(Math.random() * 1000000);
 };
+(0, kafka_1.startMessageConsumer)();
+setInterval(() => {
+    console.log(" Printing DB values...");
+    (0, kafka_1.printDb)();
+}, 120 * 1000);

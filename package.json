@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
+    "prisma:generate": "npx prisma generate",
+    "prisma:push": "npx prisma db push",
+    "prisma:pull": "npx prisma db pull",
+    "prisma:migrate": "npx prisma migrate dev --name introspected_change",
+    "prisma:reset": "npx prisma migrate reset",
     "dev": "tsc --b && node dist/index.js",
-    "migrate": "npx prisma migrate dev --name init"
+    "seed": "node dist/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -12,12 +17,18 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.7.0",
+    "bcrypt": "^5.1.1",
     "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "kafkajs": "^2.2.4",
     "redis": "^4.7.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/redis": "^4.0.10",
     "@types/ws": "^8.18.1",
     "prisma": "^6.7.0"

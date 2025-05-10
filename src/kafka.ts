@@ -3,7 +3,7 @@ import {  KAFKA_BROKER} from './config';
 import prismaClient from "./prisma";
 const kafka = new Kafka({
   clientId: "kafka-client",
-  brokers: [KAFKA_BROKER || "localhost:9094"],
+  brokers: [ "localhost:9092"],
 });
 
 let producer: null | Producer = null;
@@ -46,9 +46,9 @@ export async function startMessageConsumer() {
 
         await prismaClient.message.create({
           data: {
-            message:JSON.parse(message.value.toString()).message,
-            sendId: parseInt(JSON.parse(message.value.toString()).senderId, 10),
-            roomId: parseInt(JSON.parse(message.value.toString()).roomId, 10),
+            content:JSON.parse(message.value.toString()).message,
+            userId: JSON.parse(message.value.toString()).senderId,
+            roomId: JSON.parse(message.value.toString()).roomId
           },
         });
         console.log("Message consumed and saved to DB");        

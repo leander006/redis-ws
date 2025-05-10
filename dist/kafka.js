@@ -15,12 +15,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createProducer = createProducer;
 exports.produceMessage = produceMessage;
 exports.startMessageConsumer = startMessageConsumer;
+exports.printDb = printDb;
 const kafkajs_1 = require("kafkajs");
-const config_1 = require("./config");
 const prisma_1 = __importDefault(require("./prisma"));
 const kafka = new kafkajs_1.Kafka({
     clientId: "kafka-client",
-    brokers: [config_1.KAFKA_BROKER || "localhost:9094"],
+    brokers: ["localhost:9092"],
 });
 let producer = null;
 function createProducer() {
@@ -33,11 +33,16 @@ function createProducer() {
         return producer;
     });
 }
-function produceMessage(message) {
+function produceMessage(message, senderId, roomId) {
     return __awaiter(this, void 0, void 0, function* () {
         const producer = yield createProducer();
+        const messages = JSON.stringify({
+            message,
+            senderId,
+            roomId,
+        });
         yield producer.send({
-            messages: [{ key: `message-${Date.now()}`, value: message }],
+            messages: [{ key: `message-${Date.now()}`, value: messages }],
             topic: "MESSAGES",
         });
         return true;
@@ -52,19 +57,21 @@ function startMessageConsumer() {
         yield consumer.run({
             autoCommit: true,
             eachMessage: (_a) => __awaiter(this, [_a], void 0, function* ({ message, pause }) {
-                var _b;
                 if (!message.value)
                     return;
-                console.log(`New Message Recv..`);
                 try {
+                    console.log("started consuming");
                     yield prisma_1.default.message.create({
                         data: {
-                            text: (_b = message.value) === null || _b === void 0 ? void 0 : _b.toString(),
+                            content: JSON.parse(message.value.toString()).message,
+                            userId: JSON.parse(message.value.toString()).senderId,
+                            roomId: JSON.parse(message.value.toString()).roomId
                         },
                     });
+                    console.log("Message consumed and saved to DB");
                 }
                 catch (err) {
-                    console.log("Something is wrong");
+                    console.log("Something is wrong", err);
                     pause();
                     setTimeout(() => {
                         consumer.resume([{ topic: "MESSAGES" }]);
@@ -72,6 +79,17 @@ function startMessageConsumer() {
                 }
             }),
         });
+    });
+}
+function printDb() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const res = yield prisma_1.default.message.findMany({});
+            console.log("DB", res);
+        }
+        catch (error) {
+            console.log(error);
+        }
     });
 }
 exports.default = kafka;

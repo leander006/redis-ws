@@ -48,15 +48,18 @@ services:
       timeout: 10s
       retries: 5
   websocket-server:
-    image: leander006/websocket-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: server
+    restart: always
     ports:
       - "8080:8080"
     depends_on:
       - redis
       - kafka
       - postgres
-    environment: 
+    environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PORT=8080
