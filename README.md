@@ -72,3 +72,7 @@ http://localhost:3002/api/rooms/roomId
 - If server goes down reason can be json format parsed while sending messages so check it once
 - Always use a valid userId else kafka will not be able to save data in db giving userId does not exist exception
 
+# Logs 
+![image](https://github.com/user-attachments/assets/7bd5ee68-f84b-4a32-8a05-fa8092c2bb99)
+
+
