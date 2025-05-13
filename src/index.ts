@@ -1,27 +1,47 @@
 import { WebSocketServer,WebSocket } from 'ws';
 import { createClient } from 'redis';
 import { PORT,REDIS_PORT,REDIS_HOST, RESTPORT} from './config';
-import { printDb, produceMessage, startMessageConsumer } from './kafka';
+import { produceMessage, startMessageConsumer } from './kafka';
 import express from 'express';
 import prismaClient from './prisma';
-
+import bcrypt from "bcrypt"
 const app = express();
 app.use(express.json());
 
 
-
+// @ts-ignore
 app.post('/api/auth/login', async (req, res) => {
-    const { username, password } = req.body;
-    const user = await prismaClient.user.findUnique({
-        where: { name:username ,password:password },
-      });
-    if (!user) {
-        res.status(401).json({ error: 'Invalid credentials' });  
-    }
-    res.json(user);
-});
+    try {
+        const { username, password } = req.body;
 
-app.get('/api/rooms/:roomId/messages', async (req, res) => {
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
+        const user = await prismaClient.user.findUnique({
+            where: { name: username },
+        });
+
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid username' });
+          }
+      
+          if (!user.password) {
+            return res.status(401).json({ message: 'Invalid password' });
+          }
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        
+        if (!isPasswordValid) {
+          return res.status(401).json({ message: 'Password not matching' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Error in login:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
+app.get('/api/rooms/:roomId', async (req, res) => {
     const { roomId } = req.params;
     const messages = await prismaClient.message.findMany({
         where: {
@@ -48,18 +68,18 @@ app.listen(RESTPORT, () => {
 });
 
 const publishClient = createClient({
-    // socket: {
-    //     host: REDIS_HOST || 'redis', 
-    //     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
-    // },
+    socket: {
+        host: REDIS_HOST || 'redis', 
+        port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+    },
 });
 
 publishClient.connect()
 const subscribeClient = createClient({
-    //     socket: {
-    //     host: REDIS_HOST || 'redis', 
-    //     port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
-    // },
+        socket: {
+        host: REDIS_HOST || 'redis', 
+        port: REDIS_PORT ? parseInt(REDIS_PORT, 10) : 6379,
+    },
 });
 
 subscribeClient.connect()
@@ -84,10 +104,11 @@ wss.on('connection', function connection(ws,req) {
       ws,
       rooms: []
     };
-  ws.on('message', function message(data) {
+  ws.on('message',async function message(data) {
     const parseMesaage = JSON.parse(data.toString())
     
     const { type, roomId } = parseMesaage
+    
     if(type === 'subscribe'){
         subscriptions[userId].rooms.push(roomId)
         if (oneUserSubscribedTo(roomId)) {
@@ -97,11 +118,8 @@ wss.on('connection', function connection(ws,req) {
                     const {ws,rooms} = subscriptions[key]
                     const { message ,senderId ,roomId} = JSON.parse(messages)
                     if ((rooms.includes(roomId)) && (key !== senderId.toString())) {
-                        ws.send(JSON.stringify({ type: 'message', roomId, message }))
-                        if(message){
-                            await produceMessage(message ,senderId ,roomId);
-                            console.log("Message Produced to Kafka Broker");
-                        }                   
+                        console.log("Sending message to user " + key);
+                        ws.send(JSON.stringify({ type: 'message', roomId, message }))                
                     }
                 }
             })
@@ -114,15 +132,16 @@ wss.on('connection', function connection(ws,req) {
             subscribeClient.unsubscribe(roomId);
         }
     }
-    if(parseMesaage.type = "sendMessage"){
+    if(parseMesaage.type === "sendMessage"){        
         const { roomId, message } = parseMesaage
         const data = {
             type: "message",
             roomId,
             message,
-            senderId: id
+            senderId: userId
         }
         publishClient.publish(roomId, JSON.stringify(data));
+        await produceMessage(message, userId.toString(), roomId);
     }
   });
 });
@@ -153,8 +172,8 @@ function lastPersonLeftRoom(roomId: string) {
     return false;
 }
 
+startMessageConsumer()
 
 const random = () => {
     return Math.floor(Math.random() * 1000000);
 }
-startMessageConsumer();

@@ -1,17 +1,18 @@
 #!/bin/sh
+set -e
 
-# Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL to be ready..."
-wait-for-it ${POSTGRES_HOST}:${POSTGRES_PORT} --timeout=30 --strict -- echo "PostgreSQL is up"
+/usr/local/bin/wait-for-it postgres:5432 --timeout=30 --strict -- echo "PostgreSQL is up and running."
 
-# Run migrations
+
 echo "Running Prisma migrations..."
-npx prisma migrate deploy
+npm run prisma:migrate 
 
-# Start the application
+echo "Seeding database with test data..."
+npm run prisma:seed
+
+echo "Building the application..."
+npm run build
+
 echo "Starting the application..."
-npm run dev
-
-# Start the application
-echo "Seeding the database..."
-npm run seed
+exec "$@"

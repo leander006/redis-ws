@@ -4,10 +4,6 @@ FROM node:18
 # Set working directory
 WORKDIR /app
 
-# Add build argument
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
-
 # Copy package files
 COPY package*.json ./
 
@@ -21,12 +17,11 @@ RUN npm install @prisma/client
 # Copy the application code
 COPY . .
 
-# Add the wait-for-it.sh script
-COPY wait-for-it.sh /wait-for-it.sh
-RUN chmod +x /wait-for-it.sh
+COPY wait-for-it.sh /usr/local/bin/wait-for-it
+RUN chmod +x /usr/local/bin/wait-for-it
 
 # (Optional) Expose the port for documentation purposes
 EXPOSE 8080
 
 # Start the application
-CMD ["sh", "entrypoint.sh"]
+CMD ["./entrypoint.sh", "npm", "start"]

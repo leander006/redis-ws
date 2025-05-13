@@ -3,7 +3,7 @@ import {  KAFKA_BROKER} from './config';
 import prismaClient from "./prisma";
 const kafka = new Kafka({
   clientId: "kafka-client",
-  brokers: [ "localhost:9092"],
+  brokers: [KAFKA_BROKER || "localhost:9094"],
 });
 
 let producer: null | Producer = null;
