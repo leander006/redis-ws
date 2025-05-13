@@ -41,6 +41,18 @@ app.post('/api/auth/login', async (req, res) => {
     }
 })
 
+// @ts-ignore
+app.get('/api/users', async (req, res) => {
+    try {
+
+        const user = await prismaClient.user.findMany({});
+        res.json(user);
+    } catch (error) {
+        console.error('Error in login:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
 app.get('/api/rooms/:roomId', async (req, res) => {
     const { roomId } = req.params;
     const messages = await prismaClient.message.findMany({

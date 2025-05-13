@@ -8,8 +8,13 @@ echo "Waiting for PostgreSQL to be ready..."
 echo "Running Prisma migrations..."
 npm run prisma:migrate 
 
-echo "Seeding database with test data..."
-npm run prisma:seed
+if [ ! -f "/app/seeded.lock" ]; then
+  echo "Seeding database with test data..."
+  npm run prisma:seed
+  touch /app/seeded.lock
+else
+  echo "Database already seeded, skipping..."
+fi
 
 echo "Building the application..."
 npm run build
